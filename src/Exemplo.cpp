@@ -2,6 +2,8 @@
 
 // Neste exemplo, especificamos uma câmera virtual através da aplicação de transformações de projeção e lookAt
 #include <iostream>
+#include <vector>
+#include <cmath>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -10,7 +12,13 @@
 
 GLFWwindow* Window = nullptr;
 GLuint Shader_programm = 0;
+GLuint VaoPlano = 0;
+GLuint VaoCubo = 0;
+GLuint VaoPiramide = 0;
+GLuint VaoCilindro = 0;
+int NumVerticesCilindro = 0;
 GLuint Vao = 0;
+
 int WIDTH = 800;
 int HEIGHT = 600;
 
@@ -24,6 +32,7 @@ glm::vec3 Cam_up = glm::vec3(0.0f, 1.0f, 0.0f); // vetor "para cima" global
 
 float Cam_yaw = 0.0f; // ângulo de rotação da câmera (esquerda/direita)
 float Cam_pitch = 0.0f; // ângulo de inclinação da câmera (cima/baixo)
+float Cam_fov = 67.0f;
 
 // Variáveis de controle do mouse
 double lastX = WIDTH / 2.0;
@@ -88,9 +97,50 @@ void inicializaOpenGL() {
     }
 }
 
-void inicializaObjetos() {
-    glGenVertexArrays(1, &Vao);
-    glBindVertexArray(Vao);
+void inicializaPlano() {
+    glGenVertexArrays(1, &VaoPlano);
+    glBindVertexArray(VaoPlano);
+
+    // VBO dos vértices do cubo
+    float points[] = {
+        //chão triangulo 1
+        0.75f, 0.0f, 0.75f,
+        -0.75f, 0.0f, 0.75f,
+        -0.75f, 0.0f, -0.75f,
+        //chão triangulo 2
+         -0.75f, 0.0f, -0.75f,
+         0.75f, 0.0f,-0.75f,
+         0.75f, 0.0f, 0.75f,
+    };
+    
+    GLuint pvbo;
+    glGenBuffers(1, &pvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    // VBO das cores
+    float cores[] = {
+        0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+    };
+    
+    GLuint cvbo;
+    glGenBuffers(1, &cvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+}
+
+void inicializaCubo(){
+    glGenVertexArrays(1, &VaoCubo);
+    glBindVertexArray(VaoCubo);
 
     // VBO dos vértices do cubo
     float points[] = {
@@ -143,17 +193,155 @@ void inicializaObjetos() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+}
+
+void inicializaPiramide(){
+    glGenVertexArrays(1, &VaoPiramide);
+    glBindVertexArray(VaoPiramide);
+
+    // 18 vértices (Base + 4 paredes triangulares)
+    float points[] = {
+        // Base quadrada (2 triângulos, Y = 0.0f)
+         0.75f, 0.0f,  0.75f,
+        -0.75f, 0.0f,  0.75f,
+        -0.75f, 0.0f, -0.75f,
+
+        -0.75f, 0.0f, -0.75f,
+         0.75f, 0.0f, -0.75f,
+         0.75f, 0.0f,  0.75f,
+
+        // Parede frontal (Z = +0.75)
+        -0.75f, 0.0f,  0.75f,
+         0.75f, 0.0f,  0.75f,
+         0.0f,  1.0f,  0.0f,
+
+        // Parede direita (X = +0.75)
+         0.75f, 0.0f,  0.75f,
+         0.75f, 0.0f, -0.75f,
+         0.0f,  1.0f,  0.0f,
+
+        // Parede traseira (Z = -0.75)
+         0.75f, 0.0f, -0.75f,
+        -0.75f, 0.0f, -0.75f,
+         0.0f,  1.0f,  0.0f,
+
+        // Parede esquerda (X = -0.75)
+        -0.75f, 0.0f, -0.75f,
+        -0.75f, 0.0f,  0.75f,
+         0.0f,  1.0f,  0.0f
+    };
+    
+    GLuint pvbo;
+    glGenBuffers(1, &pvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    // VBO das cores (18 vértices com cores distintas por face)
+    float cores[] = {
+        // Base (cinza escuro)
+        0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,
+        0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,
+        // Parede frontal (vermelho telha)
+        0.9f, 0.2f, 0.2f,  0.9f, 0.2f, 0.2f,  0.9f, 0.2f, 0.2f,
+        // Parede direita (laranja telha)
+        0.9f, 0.5f, 0.2f,  0.9f, 0.5f, 0.2f,  0.9f, 0.5f, 0.2f,
+        // Parede traseira (vermelho escuro)
+        0.7f, 0.1f, 0.1f,  0.7f, 0.1f, 0.1f,  0.7f, 0.1f, 0.1f,
+        // Parede esquerda (marrom claro)
+        0.8f, 0.3f, 0.2f,  0.8f, 0.3f, 0.2f,  0.8f, 0.3f, 0.2f
+    };
+    
+    GLuint cvbo;
+    glGenBuffers(1, &cvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+}
+
+void inicializaCilindro() {
+    glGenVertexArrays(1, &VaoCilindro);
+    glBindVertexArray(VaoCilindro);
+
+    const int segmentos = 20;
+    const float raio = 0.75f;
+    const float altura = 1.0f;
+    const float pi = 3.14159265359f;
+    const float passo = 2.0f * pi / (float)segmentos;
+
+    std::vector<float> points;
+    std::vector<float> cores;
+
+    for (int i = 0; i < segmentos; i++) {
+        float ang1 = (float)i * passo;
+        float ang2 = (float)(i + 1) * passo;
+
+        float x1 = raio * cos(ang1);
+        float z1 = raio * sin(ang1);
+        float x2 = raio * cos(ang2);
+        float z2 = raio * sin(ang2);
+
+        // 1. Tampa superior (Y = altura)
+        points.push_back(0.0f); points.push_back(altura); points.push_back(0.0f);
+        points.push_back(x1);   points.push_back(altura); points.push_back(z1);
+        points.push_back(x2);   points.push_back(altura); points.push_back(z2);
+
+        for (int k = 0; k < 3; k++) {
+            cores.push_back(0.7f); cores.push_back(0.7f); cores.push_back(0.7f);
+        }
+
+        // 2. Tampa inferior (Y = 0.0f)
+        points.push_back(0.0f); points.push_back(0.0f);   points.push_back(0.0f);
+        points.push_back(x2);   points.push_back(0.0f);   points.push_back(z2);
+        points.push_back(x1);   points.push_back(0.0f);   points.push_back(z1);
+
+        for (int k = 0; k < 3; k++) {
+            cores.push_back(0.4f); cores.push_back(0.4f); cores.push_back(0.4f);
+        }
+
+        // 3. Lateral do cilindro (2 triângulos)
+        // Triângulo 1
+        points.push_back(x1); points.push_back(0.0f);   points.push_back(z1);
+        points.push_back(x2); points.push_back(0.0f);   points.push_back(z2);
+        points.push_back(x1); points.push_back(altura); points.push_back(z1);
+
+        // Triângulo 2
+        points.push_back(x2); points.push_back(0.0f);   points.push_back(z2);
+        points.push_back(x2); points.push_back(altura); points.push_back(z2);
+        points.push_back(x1); points.push_back(altura); points.push_back(z1);
+
+        // Cor lateral
+        for (int k = 0; k < 6; k++) {
+            cores.push_back(0.2f); cores.push_back(0.5f); cores.push_back(0.8f);
+        }
+    }
+
+    NumVerticesCilindro = (int)(points.size() / 3);
+
+    GLuint pvbo;
+    glGenBuffers(1, &pvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
+    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(float), points.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+    GLuint cvbo;
+    glGenBuffers(1, &cvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
+    glBufferData(GL_ARRAY_BUFFER, cores.size() * sizeof(float), cores.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
 void inicializaShaders() {
     const char* vertex_shader = 
         "#version 400\n"
         "layout(location = 0) in vec3 vertex_posicao;\n"
-        "layout(location = 1) in vec3 vertex_cores;\n"
         "uniform mat4 matriz, view, proj;\n"
-        "out vec3 cores;\n"
         "void main () {\n"
-        "    cores = vertex_cores;\n"
         "    gl_Position = proj * view * matriz * vec4(vertex_posicao, 1.0);\n"
         "}\n";
 
@@ -171,10 +359,10 @@ void inicializaShaders() {
 
     const char* fragment_shader = 
         "#version 400\n"
-        "in vec3 cores;\n"
+        "uniform vec3 corObjeto;\n"
         "out vec4 frag_colour;\n"
         "void main () {\n"
-        "    frag_colour = vec4(cores, 1.0);\n"
+        "    frag_colour = vec4(corObjeto, 1.0);\n"
         "}\n";
 
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
@@ -211,31 +399,6 @@ void atualizaDirecaoCamera() {
     Cam_front = glm::normalize(front);
 }
 
-void especificaMatrizVisualizacao() {
-    glm::mat4 visualizacao = glm::lookAt(Cam_pos, Cam_pos + Cam_front, Cam_up);
-
-    GLint transformLoc = glGetUniformLocation(Shader_programm, "view");
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(visualizacao));
-}
-
-void especificaMatrizProjecao() {
-    float znear = 0.1f;
-    float zfar = 100.0f;
-    float fov = glm::radians(67.0f);
-    float aspecto = (float)WIDTH / (float)HEIGHT;
-
-    glm::mat4 projecao = glm::perspective(fov, aspecto, znear, zfar);
-
-    GLint transformLoc = glGetUniformLocation(Shader_programm, "proj");
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(projecao));
-}
-
-void inicializaCamera() {
-    atualizaDirecaoCamera();
-    especificaMatrizVisualizacao();
-    especificaMatrizProjecao();
-}
-
 void trataTeclado() {
     if (glfwGetKey(Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(Window, true);
@@ -267,6 +430,49 @@ void trataTeclado() {
     if (glfwGetKey(Window, GLFW_KEY_Q) == GLFW_PRESS) {
         Cam_pos.y -= Cam_speed * Tempo_entre_frames;
     }
+
+    if (glfwGetKey(Window, GLFW_KEY_Z) == GLFW_PRESS || glfwGetMouseButton(Window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+        Cam_fov = 10.0f;
+    } else {
+        Cam_fov = 67.0f;
+    }
+}
+
+void desenhaCena() {
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+
+    // --- 1. PLANO (Chão verde) ---
+    glm::mat4 matPlano = glm::mat4(1.0f);
+    matPlano = glm::scale(matPlano, glm::vec3(8.0f, 1.0f, 8.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPlano));
+    glUniform3f(corLoc, 0.25f, 0.65f, 0.25f); // Verde grama uniforme
+    glBindVertexArray(VaoPlano);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // --- 2. CUBO (Marrom) ---
+    glm::mat4 matCubo = glm::mat4(1.0f);
+    matCubo = glm::translate(matCubo, glm::vec3(-2.5f, 0.5f, 0.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCubo));
+    glUniform3f(corLoc, 0.60f, 0.35f, 0.15f); // Marrom uniforme
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // --- 3. PIRÂMIDE (Vermelho telha) ---
+    glm::mat4 matPiramide = glm::mat4(1.0f);
+    matPiramide = glm::translate(matPiramide, glm::vec3(0.0f, 0.0f, 0.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPiramide));
+    glUniform3f(corLoc, 0.85f, 0.30f, 0.15f); // Laranja/Vermelho telha uniforme
+    glBindVertexArray(VaoPiramide);
+    glDrawArrays(GL_TRIANGLES, 0, 18);
+
+    // --- 4. CILINDRO (Azul) ---
+    glm::mat4 matCilindro = glm::mat4(1.0f);
+    matCilindro = glm::translate(matCilindro, glm::vec3(2.5f, 0.0f, 0.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCilindro));
+    glUniform3f(corLoc, 0.20f, 0.55f, 0.85f); // Azul uniforme
+    glBindVertexArray(VaoCilindro);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
 }
 
 void inicializaRenderizacao() {
@@ -285,17 +491,41 @@ void inicializaRenderizacao() {
         glUseProgram(Shader_programm);
         
         trataTeclado();
-        inicializaCamera();
-        
-        glBindVertexArray(Vao);
+        atualizaDirecaoCamera();
 
-        glm::mat4 transformacao = glm::mat4(1.0f);
-        transformacao = glm::rotate(transformacao, (float)glfwGetTime() * 0.5f, glm::vec3(0.5f, 1.0f, 0.0f));
-        
-        GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transformacao));
+        GLint viewLoc = glGetUniformLocation(Shader_programm, "view");
+        GLint projLoc = glGetUniformLocation(Shader_programm, "proj");
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glViewport(0, 0, WIDTH, HEIGHT);
+
+        glm::mat4 view_fps = glm::lookAt(Cam_pos, Cam_pos + Cam_front, Cam_up);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view_fps));
+
+        float aspecto_tela = (float)WIDTH / (float)HEIGHT;
+        glm::mat4 proj_persp = glm::perspective(glm::radians(Cam_fov), aspecto_tela, 0.1f, 100.0f);
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj_persp));
+
+        desenhaCena();
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        int miniW = 200;
+        int miniH = 200;
+        int miniX = WIDTH - miniW - 20;
+        int miniY = HEIGHT - miniH - 20;
+        glViewport(miniX, miniY, miniW, miniH);
+
+        glm::vec3 topo_pos = glm::vec3(0.0f, 5.0f, 0.0f);
+        glm::vec3 topo_alvo = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 topo_up = glm::vec3(0.0f, 0.0f, -1.0f);
+        glm::mat4 view_mini = glm::lookAt(topo_pos, topo_alvo, topo_up);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view_mini));
+
+        float ortho_size = 2.0f;
+        glm::mat4 proj_ortho = glm::ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 0.1f, 20.0f);
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj_ortho));
+
+        desenhaCena();
 
         glfwPollEvents();
         glfwSwapBuffers(Window);
@@ -306,7 +536,10 @@ void inicializaRenderizacao() {
 
 int main() {
     inicializaOpenGL();
-    inicializaObjetos();
+    inicializaPlano();
+    inicializaCubo();
+    inicializaPiramide();
+    inicializaCilindro();
     inicializaShaders();
     inicializaRenderizacao();
 
