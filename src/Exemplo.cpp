@@ -9,14 +9,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "primitiva.h"
 
 GLFWwindow* Window = nullptr;
 GLuint Shader_programm = 0;
-GLuint VaoPlano = 0;
-GLuint VaoCubo = 0;
-GLuint VaoPiramide = 0;
-GLuint VaoCilindro = 0;
-int NumVerticesCilindro = 0;
 GLuint Vao = 0;
 
 int WIDTH = 800;
@@ -97,243 +93,263 @@ void inicializaOpenGL() {
     }
 }
 
-void inicializaPlano() {
-    glGenVertexArrays(1, &VaoPlano);
-    glBindVertexArray(VaoPlano);
-
-    // VBO dos vértices do cubo
-    float points[] = {
-        //chão triangulo 1
-        0.75f, 0.0f, 0.75f,
-        -0.75f, 0.0f, 0.75f,
-        -0.75f, 0.0f, -0.75f,
-        //chão triangulo 2
-         -0.75f, 0.0f, -0.75f,
-         0.75f, 0.0f,-0.75f,
-         0.75f, 0.0f, 0.75f,
-    };
+void desenhaCasa(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala= glm::vec3(1.0f)) {
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
     
-    GLuint pvbo;
-    glGenBuffers(1, &pvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-    // VBO das cores
-    float cores[] = {
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-    };
+    // Matriz base da casa (aplica a posição, rotação e escala global da casa)
+    glm::mat4 matBase = glm::mat4(1.0f);
+    matBase = glm::translate(matBase, posicao);
+    matBase = glm::rotate(matBase, glm::radians(anguloRotacao), glm::vec3(0.0f, 1.0f, 0.0f));
+    matBase = glm::scale(matBase, escala);
     
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-}
-
-void inicializaCubo(){
-    glGenVertexArrays(1, &VaoCubo);
+    glm::mat4 matCorpo = matBase;
+    // Eleva 0.5 no eixo Y para a base do cubo encostar no chão (Y=0)
+    matCorpo = glm::translate(matCorpo, glm::vec3(0.0f, 0.5f, 0.0f));
+    matCorpo = glm::scale(matCorpo, glm::vec3(1.0f, 1.0f, 1.0f));
+    
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCorpo));
+    glUniform3f(corLoc, 0.85f, 0.80f, 0.65f); // Cor bege/areia para as paredes
     glBindVertexArray(VaoCubo);
-
-    // VBO dos vértices do cubo
-    float points[] = {
-        // face frontal
-        0.5f,  0.5f,  0.5f,  0.5f, -0.5f,  0.5f, -0.5f, -0.5f,  0.5f,
-       -0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  0.5f, -0.5f, -0.5f,  0.5f,
-        // face traseira
-        0.5f,  0.5f, -0.5f,  0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f,
-       -0.5f,  0.5f, -0.5f,  0.5f,  0.5f, -0.5f, -0.5f, -0.5f, -0.5f,
-        // face esquerda
-       -0.5f, -0.5f,  0.5f, -0.5f,  0.5f,  0.5f, -0.5f, -0.5f, -0.5f,
-       -0.5f, -0.5f, -0.5f, -0.5f,  0.5f, -0.5f, -0.5f,  0.5f,  0.5f,
-        // face direita
-        0.5f, -0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,  0.5f,  0.5f, -0.5f,  0.5f,  0.5f,  0.5f,
-        // face baixo
-       -0.5f, -0.5f,  0.5f,  0.5f, -0.5f,  0.5f,  0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f,  0.5f,
-        // face cima
-       -0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f, -0.5f,  0.5f, -0.5f, -0.5f,  0.5f,  0.5f,
-    };
+    glDrawArrays(GL_TRIANGLES, 0, 36);
     
-    GLuint pvbo;
-    glGenBuffers(1, &pvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-    // VBO das cores
-    float cores[] = {
-        // face frontal - vermelha
-        1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        // face traseira - verde
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-        // face esquerda - azul
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        // face direita - ciano
-        0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        // face baixo - magenta
-        1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-        // face cima - amarelo
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-    };
+    glm::mat4 matTelhado = matBase;
+    // Posiciona na altura do topo do cubo (Y=1.0)
+    matTelhado = glm::translate(matTelhado, glm::vec3(0.0f, 1.0f, 0.0f));
+    // Escala 0.8 para criar um beiral suave (0.8 * 1.5 = 1.2 de largura)
+    matTelhado = glm::scale(matTelhado, glm::vec3(0.8f, 0.6f, 0.8f));
     
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-}
-
-void inicializaPiramide(){
-    glGenVertexArrays(1, &VaoPiramide);
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTelhado));
+    glUniform3f(corLoc, 0.80f, 0.25f, 0.15f); // Cor vermelho telha
     glBindVertexArray(VaoPiramide);
+    glDrawArrays(GL_TRIANGLES, 0, 18);
 
-    // 18 vértices (Base + 4 paredes triangulares)
-    float points[] = {
-        // Base quadrada (2 triângulos, Y = 0.0f)
-         0.75f, 0.0f,  0.75f,
-        -0.75f, 0.0f,  0.75f,
-        -0.75f, 0.0f, -0.75f,
-
-        -0.75f, 0.0f, -0.75f,
-         0.75f, 0.0f, -0.75f,
-         0.75f, 0.0f,  0.75f,
-
-        // Parede frontal (Z = +0.75)
-        -0.75f, 0.0f,  0.75f,
-         0.75f, 0.0f,  0.75f,
-         0.0f,  1.0f,  0.0f,
-
-        // Parede direita (X = +0.75)
-         0.75f, 0.0f,  0.75f,
-         0.75f, 0.0f, -0.75f,
-         0.0f,  1.0f,  0.0f,
-
-        // Parede traseira (Z = -0.75)
-         0.75f, 0.0f, -0.75f,
-        -0.75f, 0.0f, -0.75f,
-         0.0f,  1.0f,  0.0f,
-
-        // Parede esquerda (X = -0.75)
-        -0.75f, 0.0f, -0.75f,
-        -0.75f, 0.0f,  0.75f,
-         0.0f,  1.0f,  0.0f
-    };
+    glm::mat4 matPorta = matBase;
+    matPorta = glm::translate(matPorta, glm::vec3(0.0f, 0.25f, 0.51f));
+    matPorta = glm::scale(matPorta, glm::vec3(0.25f, 0.5f, 0.05f));
     
-    GLuint pvbo;
-    glGenBuffers(1, &pvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-    // VBO das cores (18 vértices com cores distintas por face)
-    float cores[] = {
-        // Base (cinza escuro)
-        0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,
-        0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,
-        // Parede frontal (vermelho telha)
-        0.9f, 0.2f, 0.2f,  0.9f, 0.2f, 0.2f,  0.9f, 0.2f, 0.2f,
-        // Parede direita (laranja telha)
-        0.9f, 0.5f, 0.2f,  0.9f, 0.5f, 0.2f,  0.9f, 0.5f, 0.2f,
-        // Parede traseira (vermelho escuro)
-        0.7f, 0.1f, 0.1f,  0.7f, 0.1f, 0.1f,  0.7f, 0.1f, 0.1f,
-        // Parede esquerda (marrom claro)
-        0.8f, 0.3f, 0.2f,  0.8f, 0.3f, 0.2f,  0.8f, 0.3f, 0.2f
-    };
-    
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPorta));
+    glUniform3f(corLoc, 0.35f, 0.18f, 0.05f); // Cor madeira escura
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
-void inicializaCilindro() {
-    glGenVertexArrays(1, &VaoCilindro);
+void desenhaArvoreCubo(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala= glm::vec3(1.0f)){
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+
+    glm::mat4 matBase = glm::mat4(1.0f);
+    matBase = glm::translate(matBase, posicao);
+    matBase = glm::rotate(matBase, glm::radians(anguloRotacao), glm::vec3(0.0f,1.0f, 0.0f));
+    matBase = glm::scale(matBase, escala);
+    
+    // tronco (Cilindro de Madeira)
+    glm::mat4 matTronco = matBase;
+    float alturaTronco = 1.2f;
+    matTronco = glm::scale(matTronco, glm::vec3(0.25f, alturaTronco, 0.25f));
+    
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTronco));
+    glUniform3f(corLoc, 0.40f, 0.22f, 0.10f); // Marrom casca de árvore
     glBindVertexArray(VaoCilindro);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+    
+        // topo(Cubo Verde de Folhas)
+    glm::mat4 matCopa1 = matBase;
+    matCopa1 = glm::translate(matCopa1, glm::vec3(0.0f, alturaTronco + 0.5f, 0.0f));
+    matCopa1 = glm::scale(matCopa1, glm::vec3(1.4f, 1.5f, 1.4f));
+    
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCopa1));
+    glUniform3f(corLoc, 0.15f, 0.55f, 0.15f); //verde escuro
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+void desenhaArvorePiramide(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala= glm::vec3(1.0f)){
+        GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
 
-    const int segmentos = 20;
-    const float raio = 0.75f;
-    const float altura = 1.0f;
-    const float pi = 3.14159265359f;
-    const float passo = 2.0f * pi / (float)segmentos;
+    glm::mat4 matBase = glm::mat4(1.0f);
+    matBase = glm::translate(matBase, posicao);
+    matBase = glm::rotate(matBase, glm::radians(anguloRotacao), glm::vec3(0.0f,1.0f, 0.0f));
+    matBase = glm::scale(matBase, escala);
 
-    std::vector<float> points;
-    std::vector<float> cores;
+    //tronco(Cilindro de Madeira)
+    glm::mat4 matTronco = matBase;
+    float alturaTronco = 1.5f;
+    matTronco = glm::scale(matTronco, glm::vec3(0.25f, alturaTronco, 0.25f));
+    
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTronco));
+    glUniform3f(corLoc, 0.40f, 0.22f, 0.10f); // Marrom casca de árvore
+    glBindVertexArray(VaoCilindro);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
 
-    for (int i = 0; i < segmentos; i++) {
-        float ang1 = (float)i * passo;
-        float ang2 = (float)(i + 1) * passo;
+    //topo(piramide verde)
+    glm::mat4 matFolhas1 = glm::translate(matBase, glm::vec3(0.0f, 0.6f, 0.0f));
+    matFolhas1 = glm::scale(matFolhas1, glm::vec3(1.0f, 2.0f, 1.0f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFolhas1));
+    glUniform3f(corLoc, 0.10f, 0.45f, 0.15f);
+    glBindVertexArray(VaoPiramide);
+    glDrawArrays(GL_TRIANGLES, 0, 18);
+}
 
-        float x1 = raio * cos(ang1);
-        float z1 = raio * sin(ang1);
-        float x2 = raio * cos(ang2);
-        float z2 = raio * sin(ang2);
+void desenhaMoinho(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala=glm::vec3(1.0f)) {
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+    
+    // basw(Posiciona e orienta o moinho no mundo)
+    glm::mat4 matBase = glm::mat4(1.0f);
+    matBase = glm::translate(matBase, posicao);
+    matBase = glm::rotate(matBase, glm::radians(anguloRotacao), glm::vec3(0.0f, 1.0f, 0.0f));
+    matBase = glm::scale(matBase, escala);
+    
+    // torre (Cilindro Branco/Cinza Alto)
+    float alturaTorre = 3.2f;
+    glm::mat4 matTorre = matBase;
+    // O cilindro original tem raio 0.75. Multiplicado por 1.0 fica com raio 0.75 e altura 3.2
+    matTorre = glm::scale(matTorre, glm::vec3(1.0f, alturaTorre, 1.0f));
+    
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTorre));
+    glUniform3f(corLoc, 0.88f, 0.85f, 0.80f); // Cor pedra/reboco claro
+    glBindVertexArray(VaoCilindro);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+    
+    // teto (Pirâmide no Topo da Torre)
+    glm::mat4 matTeto = matBase;
+    matTeto = glm::translate(matTeto, glm::vec3(0.0f, alturaTorre, 0.0f));
+    matTeto = glm::scale(matTeto, glm::vec3(1.2f, 1.0f, 1.2f)); // Beiral ligeiramente maior
+    
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTeto));
+    glUniform3f(corLoc, 0.55f, 0.25f, 0.15f); // Telha marrom/vermelha
+    glBindVertexArray(VaoPiramide);
+    glDrawArrays(GL_TRIANGLES, 0, 18);
+    
+    // eixo (Ponto Central de Rotação das Pás)
+    // Colocamos o eixo próximo ao topo da torre (Y = 2.6) e projetado para a frente (Z = 0.8)
+    glm::mat4 matEixo = matBase;
+    matEixo = glm::translate(matEixo, glm::vec3(0.0f, 2.6f, 0.8f));
+    
+    // Hub Central (Cilindro ou Cubo pequeno no miolo das pás)
+    glm::mat4 matMiolo = glm::scale(matEixo, glm::vec3(0.2f, 0.2f, 0.2f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matMiolo));
+    glUniform3f(corLoc, 0.25f, 0.15f, 0.05f); // Madeira escura
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // 1. Tampa superior (Y = altura)
-        points.push_back(0.0f); points.push_back(altura); points.push_back(0.0f);
-        points.push_back(x1);   points.push_back(altura); points.push_back(z1);
-        points.push_back(x2);   points.push_back(altura); points.push_back(z2);
+    
+    // 5. ANIMAÇÃO DAS PÁS (Giro contínuo no eixo Z)
+    float anguloGiro = (float)glfwGetTime() * 50.0f;
+    
+    // Aplica a rotação contínua no eixo Z local do rotor
+    glm::mat4 matRotorAnimado = glm::rotate(matEixo, glm::radians(anguloGiro), glm::vec3(0.0f,.0f, 1.0f));
+    
+    // Desenha as 4 pás espaçadas de 90 em 90 graus
+    for (int i = 0; i < 4; i++) {
+        glm::mat4 matPa = matRotorAnimado;
+        // Gira cada uma das 4 pás na sua respectiva orientação (0°, 90°, 180°, 270°)
+        matPa = glm::rotate(matPa, glm::radians(i * 90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        
+        // Desloca o centro da pá para frente no eixo Y para ela se estender para fora a partirdo centro
+        matPa = glm::translate(matPa, glm::vec3(0.0f, 0.9f, 0.0f));
+            
+        // Estica a pá: fina em X e Z, comprida em Y
+        matPa = glm::scale(matPa, glm::vec3(0.18f, 1.5f, 0.03f));
 
-        for (int k = 0; k < 3; k++) {
-            cores.push_back(0.7f); cores.push_back(0.7f); cores.push_back(0.7f);
-        }
-
-        // 2. Tampa inferior (Y = 0.0f)
-        points.push_back(0.0f); points.push_back(0.0f);   points.push_back(0.0f);
-        points.push_back(x2);   points.push_back(0.0f);   points.push_back(z2);
-        points.push_back(x1);   points.push_back(0.0f);   points.push_back(z1);
-
-        for (int k = 0; k < 3; k++) {
-            cores.push_back(0.4f); cores.push_back(0.4f); cores.push_back(0.4f);
-        }
-
-        // 3. Lateral do cilindro (2 triângulos)
-        // Triângulo 1
-        points.push_back(x1); points.push_back(0.0f);   points.push_back(z1);
-        points.push_back(x2); points.push_back(0.0f);   points.push_back(z2);
-        points.push_back(x1); points.push_back(altura); points.push_back(z1);
-
-        // Triângulo 2
-        points.push_back(x2); points.push_back(0.0f);   points.push_back(z2);
-        points.push_back(x2); points.push_back(altura); points.push_back(z2);
-        points.push_back(x1); points.push_back(altura); points.push_back(z1);
-
-        // Cor lateral
-        for (int k = 0; k < 6; k++) {
-            cores.push_back(0.2f); cores.push_back(0.5f); cores.push_back(0.8f);
-        }
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPa));
+            
+        // Alterna tons sutis ou use uma cor de madeira/tecido nas pás
+        glUniform3f(corLoc, 0.75f, 0.70f, 0.55f); // Tecido/Madeira clara
+        glBindVertexArray(VaoCubo);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
     }
+}
 
-    NumVerticesCilindro = (int)(points.size() / 3);
+void desenhaFogueira(glm::vec3 posicao, float escalaGeral = 1.0f) {
+        GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+        GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+    
+        // 1. Matriz Base da Fogueira
+        glm::mat4 matBase = glm::mat4(1.0f);
+        matBase = glm::translate(matBase, posicao);
+        matBase = glm::scale(matBase, glm::vec3(escalaGeral));
+    
+        // ==========================================
+        // 2. BRASAS / CINZAS (Base no Chão)
+        // ==========================================
+        glm::mat4 matBrasa = matBase;
+        matBrasa = glm::scale(matBrasa, glm::vec3(0.6f, 0.05f, 0.6f));
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matBrasa));
+        glUniform3f(corLoc, 0.12f, 0.10f, 0.10f); // Carvão quase preto
+        glBindVertexArray(VaoCilindro);
+        glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+    
+        // ==========================================
+        // 3. CÍRCULO DE PEDRAS AO REDOR
+        // ==========================================
+        int numPedras = 8;
+        float raioCirculo = 0.55f;
+        for (int i = 0; i < numPedras; i++) {
+            float angulo = glm::radians((float)i * (360.0f / numPedras));
+            float px = cos(angulo) * raioCirculo;
+            float pz = sin(angulo) * raioCirculo;
+    
+            glm::mat4 matPedra = matBase;
+            matPedra = glm::translate(matPedra, glm::vec3(px, 0.06f, pz));
+            // Alterna tamanhos para parecer pedras naturais
+            float varTamanho = (i % 2 == 0) ? 0.14f : 0.11f;
+            matPedra = glm::scale(matPedra, glm::vec3(varTamanho, 0.12f, varTamanho));
+    
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPedra));
+            glUniform3f(corLoc, 0.45f, 0.45f, 0.45f); // Cinza pedra
+            glBindVertexArray(VaoCubo);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+    
+        // ==========================================
+        // 4. TORAS DE LENHA INCLINADAS
+        // ==========================================
+        int numToras = 4;
+        for (int i = 0; i < numToras; i++) {
+            glm::mat4 matTora = matBase;
+            // Gira cada tora para uma direção
+            matTora = glm::rotate(matTora, glm::radians((float)i * 90.0f + 20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            // Inclina a tora em direção ao centro
+            matTora = glm::rotate(matTora, glm::radians(35.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            // Afina o cilindro e estica o comprimento
+            matTora = glm::scale(matTora, glm::vec3(0.08f, 0.65f, 0.08f));
+    
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTora));
+            glUniform3f(corLoc, 0.30f, 0.15f, 0.05f); // Madeira escura
+            glBindVertexArray(VaoCilindro);
+            glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+        }
+    
+        // ==========================================
+        // 5. CHAMAS DE FOGO (Animadas com Pulsação!)
+        // ==========================================
+        float tempo = (float)glfwGetTime();
+        // Varia suavemente entre 0.85 e 1.15 usando a função seno
+        float pulsacao1 = 0.95f + 0.15f * sin(tempo * 9.0f);
+        float pulsacao2 = 0.90f + 0.15f * cos(tempo * 12.0f);
+    
+        // Chama Externa (Maior - Vermelho/Laranja)
+        glm::mat4 matFogoExterno = matBase;
+        matFogoExterno = glm::translate(matFogoExterno, glm::vec3(0.0f, 0.05f, 0.0f));
+        matFogoExterno = glm::scale(matFogoExterno, glm::vec3(0.40f * pulsacao1, 0.70f * pulsacao1, 0.40f * pulsacao1));
+    
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFogoExterno));
+        glUniform3f(corLoc, 0.95f, 0.30f, 0.05f); // Laranja avermelhado
+        glBindVertexArray(VaoPiramide);
+        glDrawArrays(GL_TRIANGLES, 0, 18);
 
-    GLuint pvbo;
-    glGenBuffers(1, &pvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, pvbo);
-    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(float), points.data(), GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        // Chama Interna (Menor e mais rápida - Amarelo brilhante)
+        glm::mat4 matFogoInterno = matBase;
+        matFogoInterno = glm::translate(matFogoInterno, glm::vec3(0.0f, 0.08f, 0.0f));
+        matFogoInterno = glm::rotate(matFogoInterno, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        matFogoInterno = glm::scale(matFogoInterno, glm::vec3(0.25f * pulsacao2, 0.50f * pulsacao2,0.25f * pulsacao2));
 
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, cores.size() * sizeof(float), cores.data(), GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFogoInterno));
+        glUniform3f(corLoc, 1.0f, 0.85f, 0.10f); // Amarelo fogo
+        glBindVertexArray(VaoPiramide);
+        glDrawArrays(GL_TRIANGLES, 0, 18);
 }
 
 void inicializaShaders() {
@@ -442,37 +458,37 @@ void desenhaCena() {
     GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
     GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
 
-    // --- 1. PLANO (Chão verde) ---
+    // Chão
     glm::mat4 matPlano = glm::mat4(1.0f);
-    matPlano = glm::scale(matPlano, glm::vec3(8.0f, 1.0f, 8.0f));
+    matPlano = glm::scale(matPlano, glm::vec3(10.0f, 1.0f, 10.0f));
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPlano));
     glUniform3f(corLoc, 0.25f, 0.65f, 0.25f); // Verde grama uniforme
     glBindVertexArray(VaoPlano);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    //Casas
+    desenhaCasa(glm::vec3(0.0f, 0.0f, -2.5f), 0.0f, glm::vec3(2.0f));//1
+    desenhaCasa(glm::vec3(-2.5f, 0.0f, -1.5f), 45.0f, glm::vec3(1.5f));//2
+    desenhaCasa(glm::vec3(2.5f, 0.0f, -1.5f), -45.0f, glm::vec3(1.5f));//3
+    desenhaCasa(glm::vec3(-3.5f, 0.0f, 0.5f), 90.0f, glm::vec3(1.3f));//4
+    desenhaCasa(glm::vec3(3.5f, 0.0f, 0.5f), -90.0f, glm::vec3(1.3f));//5
+    desenhaCasa(glm::vec3(-2.5f, 0.0f, 2.5f), 135.0f, glm::vec3(1.0f));//6
+    desenhaCasa(glm::vec3(2.5f, 0.0f, 2.5f), -135.0f, glm::vec3(1.0f));//7
 
-    // --- 2. CUBO (Marrom) ---
-    glm::mat4 matCubo = glm::mat4(1.0f);
-    matCubo = glm::translate(matCubo, glm::vec3(-2.5f, 0.5f, 0.0f));
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCubo));
-    glUniform3f(corLoc, 0.60f, 0.35f, 0.15f); // Marrom uniforme
-    glBindVertexArray(VaoCubo);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    //árvores piramide e cubo
+    desenhaArvoreCubo(glm::vec3(-1.0f,0.0f,-5.5f), 0.0f, glm::vec3(1.0f));//8
+    desenhaArvoreCubo(glm::vec3(1.0f,0.0f,-5.5f), 0.0f, glm::vec3(1.0f));//9
+    desenhaArvorePiramide(glm::vec3(3.8f,0.0f, -4.2f), 45.0f, glm::vec3(1.5f));//10
+    desenhaArvorePiramide(glm::vec3(-3.8f,0.0f, -4.2f), -45.0f, glm::vec3(1.5f));//11
+    desenhaArvoreCubo(glm::vec3(5.0f,0.0f,-1.2f), 45.0f, glm::vec3(1.0f));//12
+    desenhaArvoreCubo(glm::vec3(-5.0f,0.0f,-1.2f), -45.0f, glm::vec3(1.0f));//13
+    desenhaArvorePiramide(glm::vec3(4.5f,0.0f, 3.2f), 75.0f, glm::vec3(1.5f));//14
+    desenhaArvorePiramide(glm::vec3(-4.5f,0.0f, 3.2f), -75.0f, glm::vec3(1.5f));//15
+    //Moinho cok animação
+    desenhaMoinho(glm::vec3(6.0f, 0.0f, 6.0f), -90.0f, glm::vec3(1.2f));//16
 
-    // --- 3. PIRÂMIDE (Vermelho telha) ---
-    glm::mat4 matPiramide = glm::mat4(1.0f);
-    matPiramide = glm::translate(matPiramide, glm::vec3(0.0f, 0.0f, 0.0f));
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPiramide));
-    glUniform3f(corLoc, 0.85f, 0.30f, 0.15f); // Laranja/Vermelho telha uniforme
-    glBindVertexArray(VaoPiramide);
-    glDrawArrays(GL_TRIANGLES, 0, 18);
+    //fogueira com animação de fogo
+    desenhaFogueira(glm::vec3(0.0f, 0.0f, 1.0f), 1.5f);//17
 
-    // --- 4. CILINDRO (Azul) ---
-    glm::mat4 matCilindro = glm::mat4(1.0f);
-    matCilindro = glm::translate(matCilindro, glm::vec3(2.5f, 0.0f, 0.0f));
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCilindro));
-    glUniform3f(corLoc, 0.20f, 0.55f, 0.85f); // Azul uniforme
-    glBindVertexArray(VaoCilindro);
-    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
 }
 
 void inicializaRenderizacao() {

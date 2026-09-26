@@ -8,6 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Ativa o FetchContent
 include(FetchContent)
 
+# Opções do GLFW para compilação no Linux
+set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
 # Configura o FetchContent para baixar e compilar GLFW automaticamente
 FetchContent_Declare(
   glfw
@@ -70,7 +76,7 @@ endif()
 
 # Cria os executáveis
 foreach(EXERCISE ${EXERCISES})
-    add_executable(${EXERCISE} src/${EXERCISE}.cpp ${GLAD_C_FILE})
+    add_executable(${EXERCISE} src/${EXERCISE}.cpp src/primitivas.cpp ${GLAD_C_FILE})
     target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR})
     target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS})
 endforeach()
