@@ -35,6 +35,10 @@ double lastX = WIDTH / 2.0;
 double lastY = HEIGHT / 2.0;
 bool primeiro_mouse = true;
 
+// Estado da fogueira (Interação do usuário)
+bool fogueiraAcesa = true;
+bool teclaF_pressionada = false;
+
 void redimensionaCallback(GLFWwindow* window, int w, int h) {
     WIDTH = w;
     HEIGHT = h;
@@ -277,7 +281,11 @@ void desenhaFogueira(glm::vec3 posicao, float escalaGeral = 1.0f) {
         glm::mat4 matBrasa = matBase;
         matBrasa = glm::scale(matBrasa, glm::vec3(0.6f, 0.05f, 0.6f));
         glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matBrasa));
-        glUniform3f(corLoc, 0.12f, 0.10f, 0.10f); // Carvão quase preto
+        if (fogueiraAcesa) {
+            glUniform3f(corLoc, 0.35f, 0.12f, 0.05f); // Carvão avermelhado / em brasa
+        } else {
+            glUniform3f(corLoc, 0.12f, 0.10f, 0.10f); // Carvão frio / apagado
+        }
         glBindVertexArray(VaoCilindro);
         glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
     
@@ -322,34 +330,211 @@ void desenhaFogueira(glm::vec3 posicao, float escalaGeral = 1.0f) {
             glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
         }
     
-        // ==========================================
-        // 5. CHAMAS DE FOGO (Animadas com Pulsação!)
-        // ==========================================
-        float tempo = (float)glfwGetTime();
-        // Varia suavemente entre 0.85 e 1.15 usando a função seno
-        float pulsacao1 = 0.95f + 0.15f * sin(tempo * 9.0f);
-        float pulsacao2 = 0.90f + 0.15f * cos(tempo * 12.0f);
-    
-        // Chama Externa (Maior - Vermelho/Laranja)
-        glm::mat4 matFogoExterno = matBase;
-        matFogoExterno = glm::translate(matFogoExterno, glm::vec3(0.0f, 0.05f, 0.0f));
-        matFogoExterno = glm::scale(matFogoExterno, glm::vec3(0.40f * pulsacao1, 0.70f * pulsacao1, 0.40f * pulsacao1));
-    
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFogoExterno));
-        glUniform3f(corLoc, 0.95f, 0.30f, 0.05f); // Laranja avermelhado
-        glBindVertexArray(VaoPiramide);
-        glDrawArrays(GL_TRIANGLES, 0, 18);
+        if (fogueiraAcesa) {
+            // ==========================================
+            // 5. CHAMAS DE FOGO (Animadas com Pulsação!)
+            // ==========================================
+            float tempo = (float)glfwGetTime();
+            // Varia suavemente entre 0.85 e 1.15 usando a função seno
+            float pulsacao1 = 0.95f + 0.15f * sin(tempo * 9.0f);
+            float pulsacao2 = 0.90f + 0.15f * cos(tempo * 12.0f);
+        
+            // Chama Externa (Maior - Vermelho/Laranja)
+            glm::mat4 matFogoExterno = matBase;
+            matFogoExterno = glm::translate(matFogoExterno, glm::vec3(0.0f, 0.05f, 0.0f));
+            matFogoExterno = glm::scale(matFogoExterno, glm::vec3(0.40f * pulsacao1, 0.70f * pulsacao1, 0.40f * pulsacao1));
+        
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFogoExterno));
+            glUniform3f(corLoc, 0.95f, 0.30f, 0.05f); // Laranja avermelhado
+            glBindVertexArray(VaoPiramide);
+            glDrawArrays(GL_TRIANGLES, 0, 18);
 
-        // Chama Interna (Menor e mais rápida - Amarelo brilhante)
-        glm::mat4 matFogoInterno = matBase;
-        matFogoInterno = glm::translate(matFogoInterno, glm::vec3(0.0f, 0.08f, 0.0f));
-        matFogoInterno = glm::rotate(matFogoInterno, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        matFogoInterno = glm::scale(matFogoInterno, glm::vec3(0.25f * pulsacao2, 0.50f * pulsacao2,0.25f * pulsacao2));
+            // Chama Interna (Menor e mais rápida - Amarelo brilhante)
+            glm::mat4 matFogoInterno = matBase;
+            matFogoInterno = glm::translate(matFogoInterno, glm::vec3(0.0f, 0.08f, 0.0f));
+            matFogoInterno = glm::rotate(matFogoInterno, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            matFogoInterno = glm::scale(matFogoInterno, glm::vec3(0.25f * pulsacao2, 0.50f * pulsacao2, 0.25f * pulsacao2));
 
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFogoInterno));
-        glUniform3f(corLoc, 1.0f, 0.85f, 0.10f); // Amarelo fogo
-        glBindVertexArray(VaoPiramide);
-        glDrawArrays(GL_TRIANGLES, 0, 18);
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFogoInterno));
+            glUniform3f(corLoc, 1.0f, 0.85f, 0.10f); // Amarelo fogo
+            glBindVertexArray(VaoPiramide);
+            glDrawArrays(GL_TRIANGLES, 0, 18);
+        } else {
+            // ==========================================
+            // 6. EFEITO DE FUMAÇA SUBINDO (Quando Apagada)
+            // ==========================================
+            float tempo = (float)glfwGetTime();
+            int numParticulas = 6;
+            float alturaMax = 2.5f;
+
+            for (int i = 0; i < numParticulas; i++) {
+                // Cada partícula tem um deslocamento de fase vertical
+                float offset = (float)i * (alturaMax / (float)numParticulas);
+                // Altura subindo ciclicamente através de fmod
+                float progresso = fmod(tempo * 0.8f + offset, alturaMax);
+                float normalizado = progresso / alturaMax; // 0.0 (base) a 1.0 (topo)
+
+                // Vento / oscilação suave nos eixos X e Z
+                float ventoX = sin(tempo * 1.5f + (float)i * 1.2f) * 0.12f * (1.0f + normalizado * 2.0f);
+                float ventoZ = cos(tempo * 1.3f + (float)i * 0.9f) * 0.12f * (1.0f + normalizado * 2.0f);
+
+                // Escala cresce à medida que a fumaça se dissipa
+                float escalaFumaca = 0.12f + normalizado * 0.35f;
+
+                glm::mat4 matFumaca = matBase;
+                matFumaca = glm::translate(matFumaca, glm::vec3(ventoX, 0.2f + progresso, ventoZ));
+                matFumaca = glm::rotate(matFumaca, glm::radians(tempo * 35.0f + (float)i * 50.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                matFumaca = glm::scale(matFumaca, glm::vec3(escalaFumaca, escalaFumaca * 0.8f, escalaFumaca));
+
+                glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFumaca));
+                
+                // Cor vai clareando gradualmente com a altitude
+                float tomFumaca = 0.50f + normalizado * 0.35f;
+                glUniform3f(corLoc, tomFumaca, tomFumaca, tomFumaca + 0.04f);
+
+                if (i % 2 == 0) {
+                    glBindVertexArray(VaoCubo);
+                    glDrawArrays(GL_TRIANGLES, 0, 36);
+                } else {
+                    glBindVertexArray(VaoCilindro);
+                    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+                }
+            }
+        }
+}
+
+void desenharPoco(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala = glm::vec3(1.0f)) {
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+
+    glm::mat4 matBase = glm::mat4(1.0f);
+    matBase = glm::translate(matBase, posicao);
+    matBase = glm::rotate(matBase, glm::radians(anguloRotacao), glm::vec3(0.0f, 1.0f, 0.0f));
+    matBase = glm::scale(matBase, escala);
+
+    // 1. Base / Parede de pedra do poço (Cilindro)
+    float raioPoco = 0.75f;
+    float alturaParede = 0.65f;
+    glm::mat4 matParede = matBase;
+    matParede = glm::scale(matParede, glm::vec3(raioPoco, alturaParede, raioPoco));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matParede));
+    glUniform3f(corLoc, 0.50f, 0.52f, 0.53f); // Cinza pedra
+    glBindVertexArray(VaoCilindro);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+
+    // 2. Água no interior (Cilindro azul levemente menor e posicionado dentro do poço)
+    glm::mat4 matAgua = matBase;
+    matAgua = glm::translate(matAgua, glm::vec3(0.0f, 0.05f, 0.0f));
+    matAgua = glm::scale(matAgua, glm::vec3(raioPoco * 0.85f, alturaParede * 0.85f, raioPoco * 0.85f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matAgua));
+    glUniform3f(corLoc, 0.12f, 0.45f, 0.85f); // Azul água
+    glBindVertexArray(VaoCilindro);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+
+    // 3. Pilares de sustentação de madeira (2 pilares verticais laterais)
+    float alturaPilar = 1.6f;
+    float posXpilar = 0.55f;
+
+    // Pilar esquerdo
+    glm::mat4 matPilarEsq = matBase;
+    matPilarEsq = glm::translate(matPilarEsq, glm::vec3(-posXpilar, alturaPilar / 2.0f, 0.0f));
+    matPilarEsq = glm::scale(matPilarEsq, glm::vec3(0.1f, alturaPilar, 0.1f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPilarEsq));
+    glUniform3f(corLoc, 0.35f, 0.20f, 0.10f); // Madeira escura
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Pilar direito
+    glm::mat4 matPilarDir = matBase;
+    matPilarDir = glm::translate(matPilarDir, glm::vec3(posXpilar, alturaPilar / 2.0f, 0.0f));
+    matPilarDir = glm::scale(matPilarDir, glm::vec3(0.1f, alturaPilar, 0.1f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPilarDir));
+    glUniform3f(corLoc, 0.35f, 0.20f, 0.10f);
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // 4. Trave superior / Viga horizontal conectando os pilares
+    glm::mat4 matViga = matBase;
+    matViga = glm::translate(matViga, glm::vec3(0.0f, alturaPilar, 0.0f));
+    matViga = glm::scale(matViga, glm::vec3(posXpilar * 2.0f + 0.2f, 0.1f, 0.12f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matViga));
+    glUniform3f(corLoc, 0.30f, 0.18f, 0.08f);
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // 5. Rolo/Eixo central de corda
+    glm::mat4 matRolo = matBase;
+    matRolo = glm::translate(matRolo, glm::vec3(0.0f, alturaPilar - 0.25f, 0.0f));
+    matRolo = glm::scale(matRolo, glm::vec3(0.7f, 0.08f, 0.08f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matRolo));
+    glUniform3f(corLoc, 0.65f, 0.55f, 0.40f); // Corda clara
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Balde pendurado no meio
+    glm::mat4 matBalde = matBase;
+    matBalde = glm::translate(matBalde, glm::vec3(0.0f, alturaPilar - 0.65f, 0.0f));
+    matBalde = glm::scale(matBalde, glm::vec3(0.18f, 0.22f, 0.18f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matBalde));
+    glUniform3f(corLoc, 0.25f, 0.15f, 0.08f); // Madeira escura
+    glBindVertexArray(VaoCubo);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // 6. Telhadinho de cobertura do poço (Pirâmide)
+    glm::mat4 matTelhado = matBase;
+    matTelhado = glm::translate(matTelhado, glm::vec3(0.0f, alturaPilar + 0.05f, 0.0f));
+    matTelhado = glm::scale(matTelhado, glm::vec3(1.1f, 0.55f, 1.1f));
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matTelhado));
+    glUniform3f(corLoc, 0.60f, 0.25f, 0.15f); // Telha vermelha/marrom
+    glBindVertexArray(VaoPiramide);
+    glDrawArrays(GL_TRIANGLES, 0, 18);
+}
+
+void desenhaCaminhoPedra(glm::vec3 posInicio, glm::vec3 posFim, int passos = 8, float largura = 0.4f) {
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+
+    if (passos <= 1) {
+        glm::mat4 matPedra = glm::mat4(1.0f);
+        matPedra = glm::translate(matPedra, glm::vec3(posInicio.x, 0.015f, posInicio.z));
+        matPedra = glm::scale(matPedra, glm::vec3(largura, 0.03f, largura));
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPedra));
+        glUniform3f(corLoc, 0.50f, 0.50f, 0.50f);
+        glBindVertexArray(VaoCilindro);
+        glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+        return;
+    }
+
+    for (int i = 0; i <= passos; i++) {
+        float t = (float)i / (float)passos;
+        glm::vec3 pos = glm::mix(posInicio, posFim, t);
+
+        // Variação orgânica na posição e formato de cada pedra do caminho
+        float desvioX = sin((float)i * 1.7f) * (largura * 0.25f);
+        float desvioZ = cos((float)i * 2.3f) * (largura * 0.25f);
+        float tamVar = 0.85f + 0.3f * sin((float)i * 3.1f);
+        float rotVar = (float)((i * 47) % 360);
+
+        glm::mat4 matPedra = glm::mat4(1.0f);
+        matPedra = glm::translate(matPedra, glm::vec3(pos.x + desvioX, 0.015f, pos.z + desvioZ));
+        matPedra = glm::rotate(matPedra, glm::radians(rotVar), glm::vec3(0.0f, 1.0f, 0.0f));
+        matPedra = glm::scale(matPedra, glm::vec3(largura * tamVar, 0.03f, (largura * 0.85f) * tamVar));
+
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPedra));
+        
+        // Alterna tons sutis de cinza para aspecto de pedras naturais
+        float tomCinza = 0.45f + 0.1f * sin((float)i * 1.5f);
+        glUniform3f(corLoc, tomCinza, tomCinza, tomCinza);
+
+        // Alterna entre cilindro achatado e cubo para dar diversidade visual
+        if (i % 2 == 0) {
+            glBindVertexArray(VaoCilindro);
+            glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
+        } else {
+            glBindVertexArray(VaoCubo);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+    }
 }
 
 void inicializaShaders() {
@@ -452,6 +637,17 @@ void trataTeclado() {
     } else {
         Cam_fov = 67.0f;
     }
+
+    // Tecla F: Alterna a fogueira entre acesa e apagada (com fumaça)
+    if (glfwGetKey(Window, GLFW_KEY_F) == GLFW_PRESS) {
+        if (!teclaF_pressionada) {
+            fogueiraAcesa = !fogueiraAcesa;
+            teclaF_pressionada = true;
+            std::cout << "[Interacao] Fogueira " << (fogueiraAcesa ? "ACESA (com chamas)" : "APAGADA (com fumaca saindo)") << std::endl;
+        }
+    } else {
+        teclaF_pressionada = false;
+    }
 }
 
 void desenhaCena() {
@@ -489,6 +685,17 @@ void desenhaCena() {
     //fogueira com animação de fogo
     desenhaFogueira(glm::vec3(0.0f, 0.0f, 1.0f), 1.5f);//17
 
+    //poço
+    desenharPoco(glm::vec3(-6.0f, 0.0f, 6.0f), 90.0f, glm::vec3(1.0f));//18
+
+    // Caminhos de pedras conectando a porta de cada casa até a praça/fogueira central
+    desenhaCaminhoPedra(glm::vec3(0.0f, 0.0f, -1.5f),   glm::vec3(0.0f, 0.0f, 0.1f),   6, 0.35f); // Casa 1 (Norte)
+    desenhaCaminhoPedra(glm::vec3(-2.0f, 0.0f, -1.0f),  glm::vec3(-0.6f, 0.0f, 0.4f),  7, 0.30f); // Casa 2 (Noroeste)
+    desenhaCaminhoPedra(glm::vec3(2.0f, 0.0f, -1.0f),   glm::vec3(0.6f, 0.0f, 0.4f),   7, 0.30f); // Casa 3 (Nordeste)
+    desenhaCaminhoPedra(glm::vec3(-2.85f, 0.0f, 0.5f),  glm::vec3(-0.9f, 0.0f, 0.9f),  7, 0.30f); // Casa 4 (Oeste)
+    desenhaCaminhoPedra(glm::vec3(2.85f, 0.0f, 0.5f),   glm::vec3(0.9f, 0.0f, 0.9f),   7, 0.30f); // Casa 5 (Leste)
+    desenhaCaminhoPedra(glm::vec3(-2.15f, 0.0f, 2.15f), glm::vec3(-0.7f, 0.0f, 1.5f),  6, 0.28f); // Casa 6 (Sudoeste)
+    desenhaCaminhoPedra(glm::vec3(2.15f, 0.0f, 2.15f),  glm::vec3(0.7f, 0.0f, 1.5f),   6, 0.28f); // Casa 7 (Sudeste)
 }
 
 void inicializaRenderizacao() {
@@ -531,14 +738,14 @@ void inicializaRenderizacao() {
         int miniY = HEIGHT - miniH - 20;
         glViewport(miniX, miniY, miniW, miniH);
 
-        glm::vec3 topo_pos = glm::vec3(0.0f, 5.0f, 0.0f);
+        glm::vec3 topo_pos = glm::vec3(0.0f, 15.0f, 0.0f);
         glm::vec3 topo_alvo = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 topo_up = glm::vec3(0.0f, 0.0f, -1.0f);
         glm::mat4 view_mini = glm::lookAt(topo_pos, topo_alvo, topo_up);
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view_mini));
 
-        float ortho_size = 2.0f;
-        glm::mat4 proj_ortho = glm::ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 0.1f, 20.0f);
+        float ortho_size = 8.0f;
+        glm::mat4 proj_ortho = glm::ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 0.1f, 30.0f);
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj_ortho));
 
         desenhaCena();
