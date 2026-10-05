@@ -14,6 +14,10 @@
 GLFWwindow* Window = nullptr;
 GLuint Shader_programm = 0;
 GLuint Vao = 0;
+GLuint VaoCerca = 0;
+int NumVerticesCerca = 0;
+GLuint TexGrama = 0;
+GLuint TexFolhas = 0;
 
 int WIDTH = 800;
 int HEIGHT = 600;
@@ -157,15 +161,21 @@ void desenhaArvoreCubo(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 
     glBindVertexArray(VaoCilindro);
     glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
     
-        // topo(Cubo Verde de Folhas)
+        // topo(Cubo Verde de Folhas) - com Textura
     glm::mat4 matCopa1 = matBase;
     matCopa1 = glm::translate(matCopa1, glm::vec3(0.0f, alturaTronco + 0.5f, 0.0f));
     matCopa1 = glm::scale(matCopa1, glm::vec3(1.4f, 1.5f, 1.4f));
     
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matCopa1));
-    glUniform3f(corLoc, 0.15f, 0.55f, 0.15f); //verde escuro
+    glUniform3f(corLoc, 1.0f, 1.0f, 1.0f); // Cor neutra para manter a cor natural da textura
+    glUniform1i(glGetUniformLocation(Shader_programm, "usaTextura"), 1);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, TexFolhas);
+    glUniform1i(glGetUniformLocation(Shader_programm, "tex"), 0);
+
     glBindVertexArray(VaoCubo);
     glDrawArrays(GL_TRIANGLES, 0, 36);
+    glUniform1i(glGetUniformLocation(Shader_programm, "usaTextura"), 0);
 }
 void desenhaArvorePiramide(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala= glm::vec3(1.0f)){
         GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
@@ -186,13 +196,19 @@ void desenhaArvorePiramide(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::v
     glBindVertexArray(VaoCilindro);
     glDrawArrays(GL_TRIANGLES, 0, NumVerticesCilindro);
 
-    //topo(piramide verde)
+    //topo(piramide verde) - com Textura
     glm::mat4 matFolhas1 = glm::translate(matBase, glm::vec3(0.0f, 0.6f, 0.0f));
     matFolhas1 = glm::scale(matFolhas1, glm::vec3(1.0f, 2.0f, 1.0f));
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matFolhas1));
-    glUniform3f(corLoc, 0.10f, 0.45f, 0.15f);
+    glUniform3f(corLoc, 1.0f, 1.0f, 1.0f); // Cor neutra para manter a cor natural da textura
+    glUniform1i(glGetUniformLocation(Shader_programm, "usaTextura"), 1);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, TexFolhas);
+    glUniform1i(glGetUniformLocation(Shader_programm, "tex"), 0);
+
     glBindVertexArray(VaoPiramide);
     glDrawArrays(GL_TRIANGLES, 0, 18);
+    glUniform1i(glGetUniformLocation(Shader_programm, "usaTextura"), 0);
 }
 
 void desenhaMoinho(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala=glm::vec3(1.0f)) {
@@ -541,8 +557,11 @@ void inicializaShaders() {
     const char* vertex_shader = 
         "#version 400\n"
         "layout(location = 0) in vec3 vertex_posicao;\n"
+        "layout(location = 1) in vec2 vertex_uv;\n"
         "uniform mat4 matriz, view, proj;\n"
+        "out vec2 TexCoord;\n"
         "void main () {\n"
+        "    TexCoord = vertex_uv;\n"
         "    gl_Position = proj * view * matriz * vec4(vertex_posicao, 1.0);\n"
         "}\n";
 
@@ -560,10 +579,17 @@ void inicializaShaders() {
 
     const char* fragment_shader = 
         "#version 400\n"
+        "in vec2 TexCoord;\n"
         "uniform vec3 corObjeto;\n"
+        "uniform sampler2D tex;\n"
+        "uniform bool usaTextura;\n"
         "out vec4 frag_colour;\n"
         "void main () {\n"
-        "    frag_colour = vec4(corObjeto, 1.0);\n"
+        "    if (usaTextura) {\n"
+        "        frag_colour = texture(tex, TexCoord) * vec4(corObjeto, 1.0);\n"
+        "    } else {\n"
+        "        frag_colour = vec4(corObjeto, 1.0);\n"
+        "    }\n"
         "}\n";
 
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
@@ -650,17 +676,39 @@ void trataTeclado() {
     }
 }
 
+void desenhaCerca(glm::vec3 posicao, float anguloRotacao = 0.0f, glm::vec3 escala = glm::vec3(1.0f)) {
+    GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
+    GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
+
+    glm::mat4 m = glm::mat4(1.0f);
+    m = glm::translate(m, posicao);
+    m = glm::rotate(m, glm::radians(anguloRotacao), glm::vec3(0.0f, 1.0f, 0.0f));
+    m = glm::scale(m, escala);
+
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(m));
+    glUniform3f(corLoc, 0.55f, 0.35f, 0.18f); // Madeira natural envelhecida
+
+    glBindVertexArray(VaoCerca);
+    glDrawArrays(GL_TRIANGLES, 0, NumVerticesCerca);
+}
+
 void desenhaCena() {
     GLint transformLoc = glGetUniformLocation(Shader_programm, "matriz");
     GLint corLoc = glGetUniformLocation(Shader_programm, "corObjeto");
 
-    // Chão
+    // Chão com Textura de Grama repetida
     glm::mat4 matPlano = glm::mat4(1.0f);
     matPlano = glm::scale(matPlano, glm::vec3(10.0f, 1.0f, 10.0f));
     glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(matPlano));
-    glUniform3f(corLoc, 0.25f, 0.65f, 0.25f); // Verde grama uniforme
+    glUniform3f(corLoc, 1.0f, 1.0f, 1.0f); // Sem tintura, textura pura
+    glUniform1i(glGetUniformLocation(Shader_programm, "usaTextura"), 1);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, TexGrama);
+    glUniform1i(glGetUniformLocation(Shader_programm, "tex"), 0);
+
     glBindVertexArray(VaoPlano);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glUniform1i(glGetUniformLocation(Shader_programm, "usaTextura"), 0);
     //Casas
     desenhaCasa(glm::vec3(0.0f, 0.0f, -2.5f), 0.0f, glm::vec3(2.0f));//1
     desenhaCasa(glm::vec3(-2.5f, 0.0f, -1.5f), 45.0f, glm::vec3(1.5f));//2
@@ -687,6 +735,14 @@ void desenhaCena() {
 
     //poço
     desenharPoco(glm::vec3(-6.0f, 0.0f, 6.0f), 90.0f, glm::vec3(1.0f));//18
+
+    // Cerca decorando a entrada e laterais da vila (rotacionadas em 90 graus)
+    desenhaCerca(glm::vec3(-1.6f, 0.0f, 4.0f), 90.0f, glm::vec3(1.0f));
+    desenhaCerca(glm::vec3(1.6f, 0.0f, 4.0f), 90.0f, glm::vec3(1.0f));
+    desenhaCerca(glm::vec3(-3.2f, 0.0f, 4.0f), 90.0f, glm::vec3(1.0f));
+    desenhaCerca(glm::vec3(3.2f, 0.0f, 4.0f), 90.0f, glm::vec3(1.0f));
+    desenhaCerca(glm::vec3(-4.8f, 0.0f, 4.0f), 90.0f, glm::vec3(1.0f));
+    desenhaCerca(glm::vec3(4.8f, 0.0f, 4.0f), 90.0f, glm::vec3(1.0f));
 
     // Caminhos de pedras conectando a porta de cada casa até a praça/fogueira central
     desenhaCaminhoPedra(glm::vec3(0.0f, 0.0f, -1.5f),   glm::vec3(0.0f, 0.0f, 0.1f),   6, 0.35f); // Casa 1 (Norte)
@@ -763,6 +819,13 @@ int main() {
     inicializaCubo();
     inicializaPiramide();
     inicializaCilindro();
+    VaoCerca = carregaOBJ(ASSETS_DIR "/Modelos3D/fence.obj", NumVerticesCerca);
+    std::cout << "[OBJ] Cerca carregada com " << NumVerticesCerca << " vertices." << std::endl;
+    
+    // Carregamento de Texturas 2D (Grama e Folhas)
+    TexGrama = carregaTextura(ASSETS_DIR "/tex/grama.jpg");
+    TexFolhas = carregaTextura(ASSETS_DIR "/tex/folhas.jpg");
+
     inicializaShaders();
     inicializaRenderizacao();
 

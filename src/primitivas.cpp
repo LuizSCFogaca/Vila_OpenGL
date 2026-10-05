@@ -1,4 +1,10 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 #include "primitiva.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -16,16 +22,16 @@ void inicializaPlano() {
     glGenVertexArrays(1, &VaoPlano);
     glBindVertexArray(VaoPlano);
 
-    // VBO dos vértices do cubo
+    // VBO dos vértices do plano
     float points[] = {
-        //chão triangulo 1
-        0.75f, 0.0f, 0.75f,
-        -0.75f, 0.0f, 0.75f,
+        // chão triângulo 1
+         0.75f, 0.0f,  0.75f,
+        -0.75f, 0.0f,  0.75f,
         -0.75f, 0.0f, -0.75f,
-        //chão triangulo 2
-         -0.75f, 0.0f, -0.75f,
-         0.75f, 0.0f,-0.75f,
-         0.75f, 0.0f, 0.75f,
+        // chão triângulo 2
+        -0.75f, 0.0f, -0.75f,
+         0.75f, 0.0f, -0.75f,
+         0.75f, 0.0f,  0.75f,
     };
     
     GLuint pvbo;
@@ -35,22 +41,23 @@ void inicializaPlano() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-    // VBO das cores
-    float cores[] = {
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
+    // VBO de Coordenadas de Textura (UV) - repetindo 16x pelo chão
+    float uvs[] = {
+        16.0f,  0.0f,
+         0.0f,  0.0f,
+         0.0f, 16.0f,
+
+         0.0f, 16.0f,
+        16.0f, 16.0f,
+        16.0f,  0.0f,
     };
     
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
+    GLuint uvbo;
+    glGenBuffers(1, &uvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
 void inicializaCubo(){
@@ -86,29 +93,34 @@ void inicializaCubo(){
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-    // VBO das cores
-    float cores[] = {
-        // face frontal - vermelha
-        1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        // face traseira - verde
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-        // face esquerda - azul
-        0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        // face direita - ciano
-        0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        // face baixo - magenta
-        1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-        // face cima - amarelo
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+    // VBO das Coordenadas de Textura (UV) para cada uma das 6 faces (2 triângulos cada)
+    float uvs[] = {
+        // face frontal
+        1.0f, 1.0f,  1.0f, 0.0f,  0.0f, 0.0f,
+        0.0f, 1.0f,  1.0f, 1.0f,  0.0f, 0.0f,
+        // face traseira
+        1.0f, 1.0f,  1.0f, 0.0f,  0.0f, 0.0f,
+        0.0f, 1.0f,  1.0f, 1.0f,  0.0f, 0.0f,
+        // face esquerda
+        1.0f, 0.0f,  1.0f, 1.0f,  0.0f, 1.0f,
+        0.0f, 1.0f,  0.0f, 0.0f,  1.0f, 0.0f,
+        // face direita
+        0.0f, 0.0f,  0.0f, 1.0f,  1.0f, 1.0f,
+        1.0f, 1.0f,  1.0f, 0.0f,  0.0f, 0.0f,
+        // face baixo
+        0.0f, 1.0f,  1.0f, 1.0f,  1.0f, 0.0f,
+        1.0f, 0.0f,  0.0f, 0.0f,  0.0f, 1.0f,
+        // face cima
+        0.0f, 1.0f,  1.0f, 1.0f,  1.0f, 0.0f,
+        1.0f, 0.0f,  0.0f, 0.0f,  0.0f, 1.0f,
     };
     
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
+    GLuint uvbo;
+    glGenBuffers(1, &uvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
 void inicializaPiramide(){
@@ -154,27 +166,27 @@ void inicializaPiramide(){
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-    // VBO das cores (18 vértices com cores distintas por face)
-    float cores[] = {
-        // Base (cinza escuro)
-        0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,
-        0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,  0.3f, 0.3f, 0.3f,
-        // Parede frontal (vermelho telha)
-        0.9f, 0.2f, 0.2f,  0.9f, 0.2f, 0.2f,  0.9f, 0.2f, 0.2f,
-        // Parede direita (laranja telha)
-        0.9f, 0.5f, 0.2f,  0.9f, 0.5f, 0.2f,  0.9f, 0.5f, 0.2f,
-        // Parede traseira (vermelho escuro)
-        0.7f, 0.1f, 0.1f,  0.7f, 0.1f, 0.1f,  0.7f, 0.1f, 0.1f,
-        // Parede esquerda (marrom claro)
-        0.8f, 0.3f, 0.2f,  0.8f, 0.3f, 0.2f,  0.8f, 0.3f, 0.2f
+    // VBO de Coordenadas de Textura (UV) - 18 vértices (mapeamento idêntico nas 4 faces para mesma aparência)
+    float uvs[] = {
+        // Base quadrada (2 triângulos)
+        1.0f, 0.0f,  0.0f, 0.0f,  0.0f, 1.0f,
+        0.0f, 1.0f,  1.0f, 1.0f,  1.0f, 0.0f,
+        // Parede frontal (triângulo de fora 1)
+        0.0f, 0.0f,  1.0f, 0.0f,  0.5f, 1.0f,
+        // Parede direita (triângulo de fora 2)
+        0.0f, 0.0f,  1.0f, 0.0f,  0.5f, 1.0f,
+        // Parede traseira (triângulo de fora 3)
+        0.0f, 0.0f,  1.0f, 0.0f,  0.5f, 1.0f,
+        // Parede esquerda (triângulo de fora 4)
+        0.0f, 0.0f,  1.0f, 0.0f,  0.5f, 1.0f
     };
     
-    GLuint cvbo;
-    glGenBuffers(1, &cvbo);
-    glBindBuffer(GL_ARRAY_BUFFER, cvbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cores), cores, GL_STATIC_DRAW);
+    GLuint uvbo;
+    glGenBuffers(1, &uvbo);
+    glBindBuffer(GL_ARRAY_BUFFER, uvbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs, GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
 void inicializaCilindro() {
@@ -249,4 +261,113 @@ void inicializaCilindro() {
     glBufferData(GL_ARRAY_BUFFER, cores.size() * sizeof(float), cores.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+}
+
+// Parser simples de Wavefront .OBJ (faces ja triangularizadas).
+// Gera um buffer "desindexado": cada face vira 3 vertices completos.
+// Layout por vertice: x y z | u v | nx ny nz  (8 floats)
+GLuint carregaOBJ(const char* caminho, int& nVertices) {
+    std::vector<glm::vec3> posicoes, normais;
+    std::vector<glm::vec2> uvs;
+    std::vector<GLfloat> buffer;
+
+    std::ifstream arq(caminho);
+    if (!arq.is_open()) {
+        std::cerr << "Erro ao abrir OBJ: " << caminho << std::endl;
+        nVertices = 0;
+        return 0;
+    }
+
+    std::string linha;
+    while (std::getline(arq, linha)) {
+        std::istringstream ss(linha);
+        std::string tipo;
+        ss >> tipo;
+        if (tipo == "v") {
+            glm::vec3 v; ss >> v.x >> v.y >> v.z; posicoes.push_back(v);
+        } else if (tipo == "vt") {
+            glm::vec2 t; ss >> t.x >> t.y; uvs.push_back(t);
+        } else if (tipo == "vn") {
+            glm::vec3 n; ss >> n.x >> n.y >> n.z; normais.push_back(n);
+        } else if (tipo == "f") {
+            struct VerticeFace { int vi = 0, ti = 0, ni = 0; };
+            std::vector<VerticeFace> faceVertices;
+            std::string token;
+            while (ss >> token) {
+                // formatos: v | v/vt | v//vn | v/vt/vn (indices comecam em 1)
+                VerticeFace vf;
+                std::istringstream ts(token);
+                std::string idx;
+                if (std::getline(ts, idx, '/') && !idx.empty()) vf.vi = std::stoi(idx);
+                if (std::getline(ts, idx, '/') && !idx.empty()) vf.ti = std::stoi(idx);
+                if (std::getline(ts, idx)) vf.ni = std::stoi(idx);
+                faceVertices.push_back(vf);
+            }
+
+            // Triangulacao em leque (Fan Triangulation) para suportar 3, 4 ou mais vertices por face
+            for (size_t i = 1; i + 1 < faceVertices.size(); ++i) {
+                VerticeFace tri[3] = { faceVertices[0], faceVertices[i], faceVertices[i + 1] };
+                for (int j = 0; j < 3; ++j) {
+                    glm::vec3 p = (tri[j].vi > 0 && tri[j].vi <= (int)posicoes.size()) ? posicoes[tri[j].vi - 1] : glm::vec3(0.0f);
+                    glm::vec2 t = (tri[j].ti > 0 && tri[j].ti <= (int)uvs.size()) ? uvs[tri[j].ti - 1] : glm::vec2(0.0f);
+                    glm::vec3 n = (tri[j].ni > 0 && tri[j].ni <= (int)normais.size()) ? normais[tri[j].ni - 1] : glm::vec3(0.0f, 1.0f, 0.0f);
+                    buffer.insert(buffer.end(), {p.x, p.y, p.z, t.x, t.y, n.x, n.y, n.z});
+                }
+            }
+        }
+    }
+
+    nVertices = (int)(buffer.size() / 8);
+
+    GLuint vbo, vao;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, buffer.size() * sizeof(GLfloat), buffer.data(), GL_STATIC_DRAW);
+
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    GLsizei stride = 8 * sizeof(GLfloat);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)(5 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
+    glBindVertexArray(0);
+    return vao;
+}
+
+// Carregador de texturas 2D com stb_image
+GLuint carregaTextura(const char* caminho) {
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+
+    int largura, altura, numCanais;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* dados = stbi_load(caminho, &largura, &altura, &numCanais, 0);
+
+    if (dados) {
+        GLenum formato = GL_RGB;
+        if (numCanais == 1) formato = GL_RED;
+        else if (numCanais == 3) formato = GL_RGB;
+        else if (numCanais == 4) formato = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, formato, largura, altura, 0, formato, GL_UNSIGNED_BYTE, dados);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        // Repeticao e filtros lineares para visual suave
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(dados);
+        std::cout << "[Textura] Carregada com sucesso: " << caminho << " (" << largura << "x" << altura << ")" << std::endl;
+    } else {
+        std::cerr << "[Textura] Falha ao carregar textura: " << caminho << std::endl;
+        stbi_image_free(dados);
+    }
+
+    return textureID;
 }
