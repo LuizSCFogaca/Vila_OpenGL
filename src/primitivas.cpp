@@ -18,6 +18,14 @@ GLuint VaoPiramide = 0;
 GLuint VaoCilindro = 0;
 int NumVerticesCilindro = 0;
 
+/*
+ * inicializaPlano:
+  - Para que serve: Cria a geometria do chão/terreno da vila e configura seus buffers na GPU.
+  - O que faz:
+    1. Gera e vincula um Vertex Array Object (VaoPlano) para armazenar o estado dos atributos.
+    2. Envia as coordenadas dos vértices (2 triângulos formando um quadrado no plano XZ, com Y=0) via VBO para o atributo 0.
+    3. Envia as coordenadas UV de textura para o atributo 1, com valores de 0.0 a 16.0 para repetir (tiling) a textura de grama 16 vezes ao longo do terreno.
+ */
 void inicializaPlano() {
     glGenVertexArrays(1, &VaoPlano);
     glBindVertexArray(VaoPlano);
@@ -60,6 +68,14 @@ void inicializaPlano() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
+/*
+ * inicializaCubo:
+  - Para que serve: Cria a malha de um cubo unitário (centrado na origem, de -0.5 a +0.5 em cada eixo)
+  - O que faz:
+    1. Gera e vincula o VaoCubo.
+    2. Define 36 vértices (6 faces * 2 triângulos por face * 3 vértices) e envia ao VBO de posições (atributo 0).
+    3. Define as coordenadas UV para cada uma das faces (atributo 1), mapeando a textura de [0,0] a [1,1] em cada face individualmente.
+*/
 void inicializaCubo(){
     glGenVertexArrays(1, &VaoCubo);
     glBindVertexArray(VaoCubo);
@@ -123,6 +139,15 @@ void inicializaCubo(){
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
+/*
+  inicializaPiramide:
+  - Para que serve: Constrói uma pirâmide de base quadrada
+  - O que faz:
+    1. Gera e vincula o VaoPiramide.
+    2. Define 18 vértices (2 triângulos na base quadrada em Y=0 + 4 triângulos inclinados que convergem para o topo em (0, 1, 0)) e envia ao VBO de posições (atributo 0).
+    3. Envia as coordenadas UV correspondentes (atributo 1), mapeando a textura nas faces triangulares.
+
+ */
 void inicializaPiramide(){
     glGenVertexArrays(1, &VaoPiramide);
     glBindVertexArray(VaoPiramide);
@@ -189,6 +214,19 @@ void inicializaPiramide(){
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
+/*
+  inicializaCilindro:
+  - Para que serve: Gera proceduralmente a malha de um cilindro 3D (com bases circulares fechadas e corpo lateral
+  - O que faz:
+    1. Circunferência em fatias (20 fatias angulares de 2*PI/20 radianos) usando funções trigonométricas (seno e cosseno) para calcular os pontos de raio 0.75.
+    2. Para cada fatia angular, gera:
+       - Triângulo da tampa superior (ápice central em Y = altura).
+       - Triângulo da tampa inferior (ápice central em Y = 0).
+       - Dois triângulos formando a face lateral (quadrilátero retangular).
+    3. Preenche vetores de coordenadas de vértices e cores sintéticas (para sombreamento de topo/fundo/lateral), configurando os respectivos VBOs nos atributos 0 e 1 do VaoCilindro.
+    4. Atualiza a contagem total de vértices (NumVerticesCilindro) para uso posterior na chamada glDrawArrays.
+ 
+ */
 void inicializaCilindro() {
     glGenVertexArrays(1, &VaoCilindro);
     glBindVertexArray(VaoCilindro);
@@ -263,9 +301,19 @@ void inicializaCilindro() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 }
 
-// Parser simples de Wavefront .OBJ (faces ja triangularizadas).
-// Gera um buffer "desindexado": cada face vira 3 vertices completos.
-// Layout por vertice: x y z | u v | nx ny nz  (8 floats)
+/*
+  carregaOBJ:
+  - Para que serve: Lê e processa um arquivo de modelo 3D externo no formato Wavefront (.obj)
+  - O que faz:
+    1. Abre o arquivo em disco e faz a análise léxica linha a linha:
+       - 'v': posições de vértices no espaço 3D (vec3).
+       - 'vt': coordenadas de textura UV (vec2).
+       - 'vn': normais de iluminação (vec3).
+       - 'f': índices que formam as faces (suporta triângulos, quadriláteros e polígonos via triangulação em leque / Fan Triangulation).
+    2. Desindexa os dados, montando um buffer linear contínuo (layout intercalado de 8 floats por vértice: 3 posição + 2 UV + 3 normal).
+    3. Envia o buffer para a GPU em um VBO único e configura os ponteiros de atributos (loc 0: posições, loc 1: UVs, loc 2: normais) dentro de um novo VAO retornado pela função.
+    4. Define por referência o total de vértices (nVertices) gerados.
+ */
 GLuint carregaOBJ(const char* caminho, int& nVertices) {
     std::vector<glm::vec3> posicoes, normais;
     std::vector<glm::vec2> uvs;
@@ -337,7 +385,19 @@ GLuint carregaOBJ(const char* caminho, int& nVertices) {
     return vao;
 }
 
-// Carregador de texturas 2D com stb_image
+/*
+  carregaTextura:
+  - Para que serve: Carrega uma imagem do disco (JPG/PNG) para a memória de vídeo e configura o objeto de textura 2D do OpenGL.
+  - O que faz:
+    1. Utiliza a biblioteca stb_image com inversão vertical habilitada (stbi_set_flip_vertically_on_load) para alinhar a origem da imagem com o padrão UV do OpenGL (origem no canto inferior esquerdo).
+    2. Identifica o formato de canais da imagem (tons de cinza: GL_RED, RGB ou RGBA).
+    3. Envia os pixels para a GPU através de glTexImage2D e gera a cadeia de mipmaps (glGenerateMipmap) para filtragem eficiente em diferentes distâncias.
+    4. Define os parâmetros de amostragem de textura:
+       - GL_TEXTURE_WRAP_S e GL_TEXTURE_WRAP_T como GL_REPEAT (permite repetir texturas no chão e superfícies).
+       - GL_TEXTURE_MIN_FILTER como GL_LINEAR_MIPMAP_LINEAR (trilinear filtering para evitar serrilhado e moiré à distância).
+       - GL_TEXTURE_MAG_FILTER como GL_LINEAR (interpolação bilinear suave quando o objeto está próximo).
+    5. Libera a memória RAM da imagem com stbi_image_free e retorna o identificador (textureID) gerado pelo OpenGL.
+ */
 GLuint carregaTextura(const char* caminho) {
     GLuint textureID;
     glGenTextures(1, &textureID);
